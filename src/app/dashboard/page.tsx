@@ -4,10 +4,17 @@ import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, updateUserProfile } from "../firebase-config";
+import Image from "next/image";
+
+interface UserData {
+  name: string;
+  email: string;
+  profilePicture?: string;
+}
 
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
@@ -34,7 +41,7 @@ const Dashboard: React.FC = () => {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        const data = userSnap.data();
+        const data = userSnap.data() as UserData; // Cast data to UserData type
         setUserData(data);
         setName(data.name);
         setProfilePicture(data.profilePicture || "/default-profile.png"); // Default Image
@@ -70,11 +77,12 @@ const Dashboard: React.FC = () => {
           <>
             {/* 🔹 Profile Image */}
             <div className="flex justify-center mt-4">
-              <img
-                src={profilePicture}
+              <Image
+                src={profilePicture || "/default-profile.png"}
                 alt="Profile"
-                className="w-28 h-28 rounded-full border-4 border-gray-300 object-cover shadow-md"
-                onError={(e) => (e.currentTarget.src = "/default-profile.png")} // Fallback Image
+                width={112} // 28 * 4 = 112px
+                height={112}
+                className="rounded-full border-4 border-gray-300 object-cover shadow-md"
               />
             </div>
 
@@ -84,7 +92,9 @@ const Dashboard: React.FC = () => {
 
             {/* 🔹 Profile Update Fields */}
             <div className="mt-6">
-              <label className="block text-left text-gray-600 text-sm font-medium">Update Name</label>
+              <label className="block text-left text-gray-600 text-sm font-medium">
+                Update Name
+              </label>
               <input
                 type="text"
                 value={name}
