@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db, updateUserProfile } from "../firebase-config";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { auth, db } from "../firebase-config"; 
 import Image from "next/image";
 
 interface UserData {
@@ -17,7 +17,6 @@ const Dashboard: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [profilePicture, setProfilePicture] = useState("");
 
   const router = useRouter();
 
@@ -27,7 +26,7 @@ const Dashboard: React.FC = () => {
         setUser(currentUser);
         await fetchUserData(currentUser.uid);
       } else {
-        router.push("/"); // Redirect to login
+        router.push("/");
       }
       setLoading(false);
     });
@@ -35,16 +34,16 @@ const Dashboard: React.FC = () => {
     return () => unsubscribe();
   }, [router]);
 
+  // 🔹 Fetch User Data
   const fetchUserData = async (uid: string) => {
     try {
       const userRef = doc(db, "users", uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        const data = userSnap.data() as UserData; // Cast data to UserData type
+        const data = userSnap.data() as UserData;
         setUserData(data);
         setName(data.name);
-        setProfilePicture(data.profilePicture || "/default-profile.png"); // Default Image
       } else {
         console.warn("⚠️ No user data found in Firestore.");
       }
@@ -53,14 +52,22 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // 🔹 Update Profile Name
   const handleUpdateProfile = async () => {
-    if (user) {
-      await updateUserProfile(user.uid, name, profilePicture);
+    if (!user) return;
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { name });
+
+      setUserData((prev) => (prev ? { ...prev, name } : null));
+
       alert("✅ Profile updated successfully!");
-      await fetchUserData(user.uid); // Refresh data
+    } catch (error) {
+      console.error("❌ Error updating profile:", error);
     }
   };
 
+  // 🔹 Logout
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/");
@@ -76,13 +83,14 @@ const Dashboard: React.FC = () => {
         ) : userData ? (
           <>
             {/* 🔹 Profile Image */}
-            <div className="flex justify-center mt-4">
+            <div className="flex flex-col items-center mt-4">
               <Image
-                src={profilePicture || "/default-profile.png"}
+                src={userData.profilePicture || "/default-profile.png"}
                 alt="Profile"
-                width={112} // 28 * 4 = 112px
+                width={112}
                 height={112}
                 className="rounded-full border-4 border-gray-300 object-cover shadow-md"
+                unoptimized 
               />
             </div>
 
